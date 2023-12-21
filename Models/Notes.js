@@ -10,7 +10,11 @@ let notesSchema = new mongoose.Schema({
     required: true,
   },
   deadline: {
-    type: "Number",
+    type: "String",
+  },
+  status: {
+    type: "Boolean",
+    default: false,
   },
   user: {
     type: "String",

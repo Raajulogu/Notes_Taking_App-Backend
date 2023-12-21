@@ -1,6 +1,7 @@
 import express from "express";
 import { User, decodeJwtToken } from "../Models/User.js";
 import { Notes } from "../Models/Notes.js";
+import { MailSender } from "../mailer.js";
 
 let router = express.Router();
 
@@ -103,6 +104,36 @@ router.put("/update-notes", async (req, res) => {
   }
 });
 
+//Update Notes Status
+router.put("/update-status", async (req, res) => {
+    try {
+      //Check user is logged in
+      let token = req.headers["x-auth"];
+      let userId = decodeJwtToken(token);
+      let user = await User.findById({ _id: userId });
+      if (!user)
+        return res.status(400).json({ message: "Invalid Authorization" });
+  
+      //Updating Notes Status
+      let id = req.headers["id"];
+
+      let notes = await Notes.findById({ _id: id });
+      let status=notes.status==true ? false:true
+      await Notes.findOneAndUpdate(
+        { _id: id },
+        {
+          $set: {
+            status
+          },
+        }
+      );
+      res.status(200).json({ message: "Notes Status Updated Successfully" });
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  });
+
 //Delete Notes
 router.delete("/delete-notes", async (req, res) => {
   try {
@@ -121,6 +152,45 @@ router.delete("/delete-notes", async (req, res) => {
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+//Reminder  Notification
+router.post("/send-reminders", async (req, res) => {
+  try {
+    let token = req.headers["x-auth"];
+    let userId = decodeJwtToken(token);
+    let user = await User.findById({ _id: userId });
+    if (!user)
+      return res.status(400).json({ message: "Invalid Authorization" });
+
+    let id = req.headers["id"];
+    let notes = await Notes.findById({ _id: id });
+    let deadline = notes.deadline.split("/").join("-");
+
+    //Creating mail details
+    let mailData = {
+      email: user.email,
+      subject: "Task Reminder",
+      message: `This is a reminder for your ${notes.head} task`,
+    };
+
+    // Check if the task deadline is in the future
+    const taskDeadline = new Date(deadline);
+    const currentDate = new Date();
+
+    if (currentDate < taskDeadline) {
+      //Sending mail
+      await MailSender({ data: mailData });
+      res.status(200).json({ message: "Reminder sent successfully." });
+    } else {
+      res
+        .status(200)
+        .json({ message: "Task deadline has passed. No reminder sent." });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
 

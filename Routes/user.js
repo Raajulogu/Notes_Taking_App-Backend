@@ -1,6 +1,6 @@
 import express from "express";
 import bcrypt from "bcrypt";
-import { User, generateJwtToken } from "../Models/User.js";
+import { User, decodeJwtToken, generateJwtToken } from "../Models/User.js";
 
 let router = express.Router();
 
@@ -97,5 +97,17 @@ router.get("/get-user-data", async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
+
+//Get User Data by Email
+router.get('/get-user-data-by-email', async(req,res)=>{
+    try {
+        let email=req.headers["email"]
+        let user = await User.findOne({email:email});
+        res.status(200).json({message:"User Data Got Successfully",user})
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({message:"Internal Server Error"})
+    }
+})
 
 export let userRouter = router;
